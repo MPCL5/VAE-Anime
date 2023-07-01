@@ -1,12 +1,17 @@
 import os
 import torch
 import numpy as np
+import torch.nn as nn
 from torch.utils.data import DataLoader
 import torchvision.transforms as T
+from pytorch_model_summary import summary
 
 from data.anime_dataset import AnimeDataset
+from model.VAE import VAE
+from utils.train_supervisor import TrainSupervisor
+from utils.trainer import Trainer
 
-
+MODEL_NAME = 'VAE'
 IMG_SIZE = 64  # input dimension
 BATCH_SIZE = 32
 L = 16  # number of latents
@@ -17,6 +22,8 @@ NUM_EPOCHS = 1000  # max. number of epochs
 MAX_PATIENCE = 20  # an early stopping is used, if training doesn't improve for longer than 20 epochs, it is stopped
 SIZE_OF_FEATURE_MAP = 64
 NUM_CHANNELS = 3
+LIKELIHOOD_TYPE = 'categorical'
+NUM_VALS = 256
 
 RESULT_DIR = './results/'
 DATA_DIR = './data/images/'
@@ -51,54 +58,67 @@ def get_data_loaders():
 
     return (training_loader, val_loader, test_loader)
 
-def training(name, max_patience, num_epochs, model, optimizer, training_loader, val_loader):
-    nll_val = []
-    best_nll = 1000.
-    patience = 0
 
-    # Main loop
-    for e in range(num_epochs):
-        # TRAINING
-        model.train()
-        for _, batch in enumerate(training_loader):
-            batch = batch.float()
-            batch = batch.to(DEVICE)
-            if hasattr(model, 'dequantization'):
-                if model.dequantization:
-                    batch = batch + torch.rand(batch.shape)
-                    
-            loss = model.forward(batch)
+def data_transformer(data):
+    data = data.float()
+    data = data.to(DEVICE)
+    
+    return data
 
-            optimizer.zero_grad()
-            loss.backward(retain_graph=True)
-            optimizer.step()
+# TODO: extract the codes related to model itself.
+def get_model():
+    encoder = nn.Sequential(nn.Conv2d(NUM_CHANNELS, SIZE_OF_FEATURE_MAP, kernel_size=4, stride=2, padding=1),
+                            nn.LeakyReLU(),
+                            nn.Conv2d(SIZE_OF_FEATURE_MAP, SIZE_OF_FEATURE_MAP *
+                                      2, kernel_size=4, stride=2, padding=1),
+                            nn.LeakyReLU(),
+                            nn.Conv2d(SIZE_OF_FEATURE_MAP * 2, SIZE_OF_FEATURE_MAP *
+                                      4, kernel_size=4, stride=2, padding=1),
+                            nn.LeakyReLU(),
+                            nn.Flatten(),
+                            nn.Linear(256 * 8 * 8, L * 2),
+                            ).to(DEVICE)
 
-        # Validation
-        loss_val = evaluation(val_loader, model_best=model, epoch=e)
-        nll_val.append(loss_val)  # save for plotting
+    decoder = nn.Sequential(nn.Linear(L, 256 * 8 * 8),
+                            nn.Unflatten(1, (256, 8, 8)),
+                            nn.ConvTranspose2d(SIZE_OF_FEATURE_MAP * 4, SIZE_OF_FEATURE_MAP * 2, kernel_size=4, stride=2,
+                                               padding=1),
+                            nn.LeakyReLU(),
+                            nn.ConvTranspose2d(SIZE_OF_FEATURE_MAP * 2, SIZE_OF_FEATURE_MAP, kernel_size=4, stride=2,
+                                               padding=1), nn.LeakyReLU(),
+                            nn.ConvTranspose2d(
+                                SIZE_OF_FEATURE_MAP, NUM_CHANNELS * NUM_VALS, kernel_size=4, stride=2, padding=1),
+                            nn.LeakyReLU(),
+                            nn.Flatten(),
+                            # nn.Unflatten(1, (3, 64, 64, num_vals)),
+                            # nn.Softmax(dim=4)
+                            ).to(DEVICE)
 
-        if e == 0:
-            print('saved!')
-            torch.save(model, name + '.model')
-            best_nll = loss_val
-        else:
-            if loss_val < best_nll:
-                print('saved!')
-                torch.save(model, name + '.model')
-                best_nll = loss_val
-                patience = 0
+    model = VAE(encoder_net=encoder, decoder_net=decoder,
+                num_vals=NUM_VALS, L=L, likelihood_type=LIKELIHOOD_TYPE).to(DEVICE)
 
-                samples_generated(name, val_loader, extra_name="_epoch_" + str(e))
-            else:
-                patience = patience + 1
+    print("ENCODER:\n", summary(encoder, torch.zeros(1, 3, 64, 64,
+                                                     device=DEVICE), show_input=False, show_hierarchical=False))
 
-        if patience > max_patience:
-            break
+    print("\nDECODER:\n", summary(decoder, torch.zeros(
+        1, L, device=DEVICE), show_input=False, show_hierarchical=False))
 
-    nll_val = np.asarray(nll_val)
+    return model
 
-    return nll_val
+
+def get_optimizer():
+    return torch.optim.Adamax([p for p in model.parameters() if p.requires_grad == True], lr=LR)
+
 
 if __name__ == '__main__':
     ensure_structure()
     training_loader, val_loader, test_loader = get_data_loaders()
+
+    model = get_model()
+    optimizer = get_optimizer()
+
+    supervisor = TrainSupervisor(MODEL_NAME, MAX_PATIENCE, RESULT_DIR)
+    trainer = Trainer(supervisor, NUM_EPOCHS, model,
+                      optimizer, training_loader, val_loader, data_transformer)
+    
+    nll_val = trainer.start_training()

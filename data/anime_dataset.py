@@ -47,7 +47,6 @@ class AnimeDataset(Dataset):
                 self.data_dir[index] + self.file_extentions[index])
             for filename in self.__get__img_filenames(total_files):
                 image_list.append(filename)
-            print(len(total_files))
 
         return image_list
 

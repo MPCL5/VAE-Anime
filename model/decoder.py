@@ -64,11 +64,11 @@ class Decoder(nn.Module):
         match self.distribution:
             case 'categorical':
                 # TODO: should moved to another method
-                # mu_d = torch.argmax(outs[0], dim=-1)
-                # log_p = F.mse_loss(mu_d, x)
-                mu_d = outs[0]
-                log_p = log_categorical(
-                    x, mu_d, num_classes=self.num_vals, reduction='sum', dim=-1).sum(-1)
+                mu_d = torch.argmax(outs[0], dim=-1)
+                log_p = nn.functional.mse_loss(mu_d, x)
+                # mu_d = outs[0]
+                # log_p = log_categorical(
+                #     x, mu_d, num_classes=self.num_vals, reduction='sum', dim=-1).sum(-1)
 
             case 'bernoulli':
                 # TODO: should moved to another method
