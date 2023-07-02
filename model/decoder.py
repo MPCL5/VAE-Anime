@@ -55,11 +55,7 @@ class Decoder(nn.Module):
             case 'categorical':
                 # TODO: should moved to another method
                 mu_d = outs[0]
-                b = mu_d.shape[0]
-                m = mu_d.shape[1]
-                mu_d = mu_d.view(mu_d.shape[0], -1, self.num_vals)
-                p = mu_d.view(-1, self.num_vals)
-                x_new = torch.multinomial(p, num_samples=1).view(b, m)
+                x_new = torch.argmax(outs[0], dim=-1)
 
             case 'bernoulli':
                 # TODO: should moved to another method

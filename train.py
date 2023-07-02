@@ -18,7 +18,7 @@ BATCH_SIZE = 32
 L = 16  # number of latents
 M = 256  # the number of neurons in scale (s) and translation (t) nets
 
-LR = 1e-3  # learning rate
+LR = 2e-3  # learning rate
 NUM_EPOCHS = 1000  # max. number of epochs
 MAX_PATIENCE = 20  # an early stopping is used, if training doesn't improve for longer than 20 epochs, it is stopped
 SIZE_OF_FEATURE_MAP = 64
@@ -114,24 +114,23 @@ def get_optimizer():
 
 # TODO: need to be refactored
 def samples_generated(name, data_loader, extra_name=''):
-    x = next(iter(data_loader)).detach().numpy()
+    # x = next(iter(data_loader)).detach().numpy()
 
     # GENERATIONS-------
     model_best = torch.load(RESULT_DIR + name + '.model')
+    model_best.to(DEVICE)
     model_best.eval()
 
     num_x = 4
     num_y = 4
     x = model_best.sample(num_x * num_y)
-    x = x.cpu().detach().numpy()
 
     _, ax = plt.subplots(num_x, num_y)
     for i, ax in enumerate(ax.flatten()):
-        plottable_image = np.reshape(x[i], (8, 8))
-        ax.imshow(plottable_image, cmap='gray')
+        ax.imshow(x[i].permute(1, 2, 0).cpu().detach().numpy())
         ax.axis('off')
 
-    plt.savefig(name + '_generated_images' +
+    plt.savefig(RESULT_DIR + name + '_generated_images' +
                 extra_name + '.pdf', bbox_inches='tight')
     plt.close()
 

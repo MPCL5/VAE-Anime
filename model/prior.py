@@ -10,7 +10,7 @@ class Prior(nn.Module):
         self.L = L
 
     def sample(self, batch_size):
-        z = torch.randn((batch_size, self.L))
+        z = torch.randn((batch_size, self.L), device='cuda')
         return z
 
     def log_prob(self, z):
