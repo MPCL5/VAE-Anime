@@ -2,6 +2,7 @@
 # TODO: refactor them
 
 import torch
+import torch.nn.functional as F
 import numpy as np
 
 PI = torch.from_numpy(np.asarray(np.pi))
@@ -17,9 +18,10 @@ EPS = 1.e-5
 #         return torch.sum(log_p, dim)
 #     else:
 #         return log_p
-def log_categorical(x, p, num_classes=256, reduction=None, dim=None):
-    log_p = torch.log(torch.clamp(p, EPS, 1. - EPS))
-    log_p_select = torch.gather(log_p, dim, x.unsqueeze(dim))
+def log_categorical(x, p, reduction=None, dim=None):
+    log_p_select = torch.log(torch.clamp(p, EPS, 1. - EPS))
+    log_p_select = torch.gather(
+        log_p_select, dim, x.unsqueeze(dim).type(torch.int64))
 
     if reduction == 'avg':
         return torch.mean(log_p_select, dim)

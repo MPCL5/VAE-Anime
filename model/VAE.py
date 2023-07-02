@@ -26,6 +26,7 @@ class VAE(nn.Module):
 
         # ELBO
         RE = self.decoder.log_prob(x, z)  # reconstruction
+        # RE = get_re(x, z)  # reconstruction
         KL = (self.prior.log_prob(z) - self.encoder.log_prob(mu_e=mu_e,
               log_var_e=log_var_e, z=z)).sum(-1)  # generalization
 
