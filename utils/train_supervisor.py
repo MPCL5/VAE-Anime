@@ -10,6 +10,7 @@ class TrainSupervisor:
         self.max_patience = max_patience
         self.patience = 0
         self.model = None
+        self.on_save = None
 
     def __save(self):
         print(f'Model {self.model_name} saved!')
@@ -27,7 +28,7 @@ class TrainSupervisor:
             raise Exception("Model would be given befor proceeding.")
 
         if loss_val < self.best_nll:
-            self.__save(loss_val)
+            self.__save()
             self.best_nll = loss_val
             return
 

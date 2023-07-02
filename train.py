@@ -62,10 +62,12 @@ def get_data_loaders():
 def data_transformer(data):
     data = data.float()
     data = data.to(DEVICE)
-    
+
     return data
 
 # TODO: extract the codes related to model itself.
+
+
 def get_model():
     encoder = nn.Sequential(nn.Conv2d(NUM_CHANNELS, SIZE_OF_FEATURE_MAP, kernel_size=4, stride=2, padding=1),
                             nn.LeakyReLU(),
@@ -110,15 +112,25 @@ def get_optimizer():
     return torch.optim.Adamax([p for p in model.parameters() if p.requires_grad == True], lr=LR)
 
 
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find('BatchNorm') != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
+
+
 if __name__ == '__main__':
     ensure_structure()
     training_loader, val_loader, test_loader = get_data_loaders()
 
     model = get_model()
+    model.apply(weights_init)
     optimizer = get_optimizer()
 
     supervisor = TrainSupervisor(MODEL_NAME, MAX_PATIENCE, RESULT_DIR)
     trainer = Trainer(supervisor, NUM_EPOCHS, model,
                       optimizer, training_loader, val_loader, data_transformer)
-    
+
     nll_val = trainer.start_training()
