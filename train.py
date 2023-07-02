@@ -18,7 +18,7 @@ BATCH_SIZE = 32
 L = 16  # number of latents
 M = 256  # the number of neurons in scale (s) and translation (t) nets
 
-LR = 2e-3  # learning rate
+LR = 1e-3  # learning rate
 NUM_EPOCHS = 1000  # max. number of epochs
 MAX_PATIENCE = 20  # an early stopping is used, if training doesn't improve for longer than 20 epochs, it is stopped
 SIZE_OF_FEATURE_MAP = 64

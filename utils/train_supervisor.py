@@ -32,6 +32,7 @@ class TrainSupervisor:
         if loss_val < self.best_nll:
             self.__save()
             self.best_nll = loss_val
+            self.patience = 0
             return
 
         self.patience += 1
