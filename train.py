@@ -2,6 +2,7 @@ import os
 import torch
 import numpy as np
 import torch.nn as nn
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 import torchvision.transforms as T
 from pytorch_model_summary import summary
@@ -65,9 +66,8 @@ def data_transformer(data):
 
     return data
 
+
 # TODO: extract the codes related to model itself.
-
-
 def get_model():
     encoder = nn.Sequential(nn.Conv2d(NUM_CHANNELS, SIZE_OF_FEATURE_MAP, kernel_size=4, stride=2, padding=1),
                             nn.LeakyReLU(),
@@ -112,6 +112,31 @@ def get_optimizer():
     return torch.optim.Adamax([p for p in model.parameters() if p.requires_grad == True], lr=LR)
 
 
+# TODO: need to be refactored
+def samples_generated(name, data_loader, extra_name=''):
+    x = next(iter(data_loader)).detach().numpy()
+
+    # GENERATIONS-------
+    model_best = torch.load(RESULT_DIR + name + '.model')
+    model_best.eval()
+
+    num_x = 4
+    num_y = 4
+    x = model_best.sample(num_x * num_y)
+    x = x.cpu().detach().numpy()
+
+    _, ax = plt.subplots(num_x, num_y)
+    for i, ax in enumerate(ax.flatten()):
+        plottable_image = np.reshape(x[i], (8, 8))
+        ax.imshow(plottable_image, cmap='gray')
+        ax.axis('off')
+
+    plt.savefig(name + '_generated_images' +
+                extra_name + '.pdf', bbox_inches='tight')
+    plt.close()
+
+
+# TODO: need to be refactored
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
@@ -119,6 +144,15 @@ def weights_init(m):
     elif classname.find('BatchNorm') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
+
+
+# TODO: need some revisions.
+def plot_curve(name, nll_val):
+    plt.plot(np.arange(len(nll_val)), nll_val, linewidth='3')
+    plt.xlabel('epochs')
+    plt.ylabel('nll')
+    plt.savefig(name + '_nll_val_curve.pdf', bbox_inches='tight')
+    plt.close()
 
 
 if __name__ == '__main__':
@@ -129,8 +163,14 @@ if __name__ == '__main__':
     model.apply(weights_init)
     optimizer = get_optimizer()
 
-    supervisor = TrainSupervisor(MODEL_NAME, MAX_PATIENCE, RESULT_DIR)
+    def on_save(name, num): return samples_generated(
+        name, val_loader, f'best_{num}')
+
+    supervisor = TrainSupervisor(
+        MODEL_NAME, MAX_PATIENCE, RESULT_DIR, on_save=on_save)
     trainer = Trainer(supervisor, NUM_EPOCHS, model,
                       optimizer, training_loader, val_loader, data_transformer)
 
     nll_val = trainer.start_training()
+    print(nll_val)
+    plot_curve(RESULT_DIR + MODEL_NAME, nll_val)
