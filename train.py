@@ -18,7 +18,7 @@ BATCH_SIZE = 32
 L = 16  # number of latents
 M = 256  # the number of neurons in scale (s) and translation (t) nets
 
-LR = 1e-3  # learning rate
+LR = 5e-4  # learning rate
 NUM_EPOCHS = 1000  # max. number of epochs
 MAX_PATIENCE = 20  # an early stopping is used, if training doesn't improve for longer than 20 epochs, it is stopped
 SIZE_OF_FEATURE_MAP = 64
@@ -28,6 +28,9 @@ NUM_VALS = 256
 
 RESULT_DIR = './results/'
 DATA_DIR = './data/images/'
+
+GENERATED_NUM_X = 4 # number of images in the X axis of generated result
+GENERATED_NUM_Y = 4 # number of images in the Y axis of generated result
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -70,27 +73,35 @@ def data_transformer(data):
 # TODO: extract the codes related to model itself.
 def get_model():
     encoder = nn.Sequential(nn.Conv2d(NUM_CHANNELS, SIZE_OF_FEATURE_MAP, kernel_size=4, stride=2, padding=1),
-                            nn.LeakyReLU(),
+                            nn.ReLU(),
+                            nn.BatchNorm2d(SIZE_OF_FEATURE_MAP),
                             nn.Conv2d(SIZE_OF_FEATURE_MAP, SIZE_OF_FEATURE_MAP *
                                       2, kernel_size=4, stride=2, padding=1),
-                            nn.LeakyReLU(),
+                            nn.ReLU(),
+                            nn.BatchNorm2d(2 * SIZE_OF_FEATURE_MAP),
                             nn.Conv2d(SIZE_OF_FEATURE_MAP * 2, SIZE_OF_FEATURE_MAP *
                                       4, kernel_size=4, stride=2, padding=1),
-                            nn.LeakyReLU(),
+                            nn.ReLU(),
+                            nn.BatchNorm2d(SIZE_OF_FEATURE_MAP * 4),
                             nn.Flatten(),
-                            nn.Linear(256 * 8 * 8, L * 2),
+                            nn.Linear(256 * 8 * 8, 256 * 2),
+                            nn.Linear(256 * 2, L * 2),
                             ).to(DEVICE)
 
-    decoder = nn.Sequential(nn.Linear(L, 256 * 8 * 8),
+    decoder = nn.Sequential(nn.Linear(L, 256 * 2),
+                            nn.Linear(256 * 2, 256 * 8 * 8),
                             nn.Unflatten(1, (256, 8, 8)),
                             nn.ConvTranspose2d(SIZE_OF_FEATURE_MAP * 4, SIZE_OF_FEATURE_MAP * 2, kernel_size=4, stride=2,
                                                padding=1),
-                            nn.LeakyReLU(),
+                            nn.ReLU(),
+                            nn.BatchNorm2d(SIZE_OF_FEATURE_MAP * 2),
                             nn.ConvTranspose2d(SIZE_OF_FEATURE_MAP * 2, SIZE_OF_FEATURE_MAP, kernel_size=4, stride=2,
-                                               padding=1), nn.LeakyReLU(),
+                                               padding=1),
+                            nn.ReLU(),
+                            nn.BatchNorm2d(SIZE_OF_FEATURE_MAP),
                             nn.ConvTranspose2d(
                                 SIZE_OF_FEATURE_MAP, NUM_CHANNELS * NUM_VALS, kernel_size=4, stride=2, padding=1),
-                            nn.LeakyReLU(),
+                            nn.ReLU(),
                             nn.Flatten(),
                             # nn.Unflatten(1, (3, 64, 64, num_vals)),
                             # nn.Softmax(dim=4)
@@ -112,25 +123,17 @@ def get_optimizer():
     return torch.optim.Adamax([p for p in model.parameters() if p.requires_grad == True], lr=LR)
 
 
-# TODO: need to be refactored
-def samples_generated(name, data_loader, extra_name=''):
-    # x = next(iter(data_loader)).detach().numpy()
+def samples_generated(model: nn.Module, extra_name=''):
+    model.eval()
 
-    # GENERATIONS-------
-    model_best = torch.load(RESULT_DIR + name + '.model')
-    model_best.to(DEVICE)
-    model_best.eval()
+    x = model.sample(GENERATED_NUM_X * GENERATED_NUM_Y)
 
-    num_x = 4
-    num_y = 4
-    x = model_best.sample(num_x * num_y)
-
-    _, ax = plt.subplots(num_x, num_y)
+    _, ax = plt.subplots(GENERATED_NUM_X, GENERATED_NUM_Y)
     for i, ax in enumerate(ax.flatten()):
         ax.imshow(x[i].permute(1, 2, 0).cpu().detach().numpy())
         ax.axis('off')
 
-    plt.savefig(RESULT_DIR + name + '_generated_images' +
+    plt.savefig(RESULT_DIR + MODEL_NAME + '_generated_images' +
                 extra_name + '.pdf', bbox_inches='tight')
     plt.close()
 
@@ -162,8 +165,8 @@ if __name__ == '__main__':
     model.apply(weights_init)
     optimizer = get_optimizer()
 
-    def on_save(name, num): return samples_generated(
-        name, val_loader, f'best_{num}')
+    def on_save(name, num):
+        return samples_generated(name, f'best_{num}')
 
     supervisor = TrainSupervisor(
         MODEL_NAME, MAX_PATIENCE, RESULT_DIR, on_save=on_save)

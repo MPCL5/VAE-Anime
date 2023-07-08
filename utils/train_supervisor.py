@@ -19,7 +19,7 @@ class TrainSupervisor:
         self.num_saves += 1
 
         if self.on_save:
-            self.on_save(self.model_name, self.num_saves)
+            self.on_save(self.model, self.num_saves)
 
     def set_model(self, model: torch.nn.Module):
         self.model = model
