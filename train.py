@@ -15,7 +15,7 @@ from utils.trainer import Trainer
 MODEL_NAME = 'VAE'
 IMG_SIZE = 64  # input dimension
 BATCH_SIZE = 20
-L = 16  # number of latents
+LATENT_SIZE = 16  # number of latents
 M = 256  # the number of neurons in scale (s) and translation (t) nets
 
 LR = 1e-3  # learning rate
@@ -85,10 +85,10 @@ def get_model():
                             nn.BatchNorm2d(SIZE_OF_FEATURE_MAP * 4),
                             nn.Flatten(),
                             nn.Linear(256 * 8 * 8, 256 * 2),
-                            nn.Linear(256 * 2, L * 2),
+                            nn.Linear(256 * 2, LATENT_SIZE * 2),
                             ).to(DEVICE)
 
-    decoder = nn.Sequential(nn.Linear(L, 256 * 2),
+    decoder = nn.Sequential(nn.Linear(LATENT_SIZE, 256 * 2),
                             nn.Linear(256 * 2, 256 * 8 * 8),
                             nn.Unflatten(1, (256, 8, 8)),
                             nn.ConvTranspose2d(SIZE_OF_FEATURE_MAP * 4, SIZE_OF_FEATURE_MAP * 2, kernel_size=4, stride=2,
@@ -108,18 +108,18 @@ def get_model():
                             ).to(DEVICE)
 
     model = VAE(encoder_net=encoder, decoder_net=decoder,
-                num_vals=NUM_VALS, L=L, likelihood_type=LIKELIHOOD_TYPE).to(DEVICE)
+                num_vals=NUM_VALS, L=LATENT_SIZE, likelihood_type=LIKELIHOOD_TYPE).to(DEVICE)
 
     print("ENCODER:\n", summary(encoder, torch.zeros(1, 3, 64, 64,
                                                      device=DEVICE), show_input=False, show_hierarchical=False))
 
     print("\nDECODER:\n", summary(decoder, torch.zeros(
-        1, L, device=DEVICE), show_input=False, show_hierarchical=False))
+        1, LATENT_SIZE, device=DEVICE), show_input=False, show_hierarchical=False))
 
     return model
 
 
-def get_optimizer():
+def get_optimizer(model):
     return torch.optim.Adamax([p for p in model.parameters() if p.requires_grad == True], lr=LR)
 
 
@@ -163,7 +163,7 @@ if __name__ == '__main__':
 
     model = get_model()
     model.apply(weights_init)
-    optimizer = get_optimizer()
+    optimizer = get_optimizer(model)
 
     def on_save(name, num):
         return samples_generated(name, f'best_{num}')
