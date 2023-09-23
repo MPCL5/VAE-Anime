@@ -14,11 +14,11 @@ from utils.trainer import Trainer
 
 MODEL_NAME = 'VAE'
 IMG_SIZE = 64  # input dimension
-BATCH_SIZE = 32
+BATCH_SIZE = 20
 L = 16  # number of latents
 M = 256  # the number of neurons in scale (s) and translation (t) nets
 
-LR = 5e-4  # learning rate
+LR = 1e-3  # learning rate
 NUM_EPOCHS = 1000  # max. number of epochs
 MAX_PATIENCE = 20  # an early stopping is used, if training doesn't improve for longer than 20 epochs, it is stopped
 SIZE_OF_FEATURE_MAP = 64
@@ -33,7 +33,7 @@ GENERATED_NUM_X = 4 # number of images in the X axis of generated result
 GENERATED_NUM_Y = 4 # number of images in the Y axis of generated result
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+# DEVICE = torch.device('cpu')
 
 def ensure_structure():
     if (os.path.exists(RESULT_DIR)):
@@ -57,8 +57,8 @@ def get_data_loaders():
 
     training_loader = DataLoader(
         train_data, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=BATCH_SIZE, shuffle=False)
-    test_loader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=False)
+    val_loader = DataLoader(val_data, batch_size=BATCH_SIZE, shuffle=True)
+    test_loader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=True)
 
     return (training_loader, val_loader, test_loader)
 

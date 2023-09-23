@@ -56,4 +56,4 @@ class Encoder(nn.Module):
         if type == 'log_prob':
             return self.log_prob(x)
 
-        return self.sample(x)
+        return self.sample_with_x(x)
