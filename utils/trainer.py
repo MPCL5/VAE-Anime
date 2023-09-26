@@ -9,26 +9,18 @@ from utils.train_supervisor import TrainSupervisor
 class Trainer:
     # TODO: Too many dependencies. should be refactored!
     def __init__(self, supervisor: TrainSupervisor, num_epochs: int,
-                 model: nn.Module, optimizer, training_loader: DataLoader, val_loader: DataLoader, data_transfer=None) -> None:
+                 model: nn.Module, optimizer, training_loader: DataLoader, val_loader: DataLoader) -> None:
         self.num_epochs = num_epochs
         self.model = model
         self.optimizer = optimizer
         self.training_loader = training_loader
         self.val_loader = val_loader
-        self.data_transfer = data_transfer
         self.supervisor = supervisor
 
     def train(self):
         self.model.train()  # put our model in train mode
         for _, batch in enumerate(self.training_loader):
-            # batch = batch.float()
-            # batch = batch.to(DEVICE)
-            if self.data_transfer:
-                batch = self.data_transfer(batch)
-
-            if hasattr(self.model, 'dequantization'):
-                if self.model.dequantization:
-                    batch = batch + torch.rand(batch.shape)
+            batch = batch[0].cuda().float()
 
             loss = self.model.forward(batch)
 
@@ -36,15 +28,14 @@ class Trainer:
             loss.backward(retain_graph=True)
             self.optimizer.step()
 
+    @torch.no_grad()
     def evaluate(self, epoch):
         self.model.eval()
         loss = 0.
         N = 0.
 
         for _, test_batch in enumerate(self.val_loader):
-            # test_batch = test_batch.to(DEVICE)
-            if self.data_transfer:
-                test_batch = self.data_transfer(test_batch)
+            test_batch = test_batch[0].cuda().float()
 
             loss_t = self.model.forward(test_batch, reduction='sum')
             loss = loss + loss_t.item()

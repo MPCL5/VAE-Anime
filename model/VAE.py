@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from model.decoder import Decoder
@@ -23,20 +24,21 @@ class VAE(nn.Module):
         # encoder
         mu_e, log_var_e = self.encoder.encode(x)
         z = self.encoder.sample(mu_e=mu_e, log_var_e=log_var_e)
+        outs = self.decoder.decoder(z)
 
         # ELBO
-        RE = self.decoder.log_prob(x, z)  # reconstruction
-        # RE = get_re(x, z)  # reconstruction
-        KL = (self.prior.log_prob(z) - self.encoder.log_prob(mu_e=mu_e,
-              log_var_e=log_var_e, z=z)).sum(-1)  # generalization
+        # RE = self.decoder.log_prob(x, z)  # reconstruction
+        RE = nn.functional.cross_entropy(
+            x.view((x.shape[0], 3*64*64)), outs.view((outs.shape[0], 3*64*64)), reduction='sum')
+        # RE = nn.functional.binary_cross_entropy(x, outs, reduction='sum')
+        # RE = get_re(x, z)  # reconstruction\
+        # RE = 0
+        KL = -0.5 * torch.sum(1 + log_var_e - mu_e.pow(2) - log_var_e.exp())
+        # KL = 0
 
-        if reduction == 'sum':
-            return -(RE + KL).sum()
-
-        # otherwise it's average.
-        return -(RE + KL).mean()
+        return RE + KL
 
     def sample(self, batch_size=64):
         z = self.prior.sample(batch_size=batch_size)
 
-        return self.decoder.sample(z)
+        return self.decoder.decoder(z)

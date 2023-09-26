@@ -35,7 +35,6 @@ class Decoder(nn.Module):
             case 'categorical':
                 # TODO: should moved to another method
                 b = h_d.shape[0]
-                d = h_d.shape[1] // (self.num_vals * 3)
                 h_d = h_d.view(b, 3, 64, 64, self.num_vals)
                 mu_d = torch.softmax(h_d, 3)
                 # mu_d = torch.softmax(h_d, dim=4)
