@@ -11,6 +11,7 @@ from dataset import VAEDataset
 
 from model.vanilla_vae import VanillaVAE
 from utils.experiment import VAEXperiment
+# from pytorch_model_summary import summary
 
 
 LOGING_PARAM = {
@@ -40,7 +41,7 @@ DATA_PARAM = {
     'data_path': './data',
     'train_batch_size': 64,
     'val_batch_size':  64,
-    'patch_size': 64,
+    'patch_size': (64, 64),
     'num_workers': 4,
     'pin_memory': False,
     'fast_dev_run': True,
@@ -58,9 +59,11 @@ if __name__ == '__main__':
         in_channels=MODEL_PARAM['in_channels'],
         latent_dim=MODEL_PARAM['latent_dim']
     )
+    # print("ENCODER:\n", summary(model, torch.zeros(1, 3, 64, 64),
+    #   show_input=True, show_hierarchical=False))
     experiment = VAEXperiment(model, EXP_PARAM)
 
-    data = VAEDataset(**DATA_PARAM)
+    data = VAEDataset(**DATA_PARAM, patch_size=(64, 64))
 
     # data.setup()
 

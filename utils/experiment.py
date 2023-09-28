@@ -2,12 +2,8 @@ import os
 from torch import optim
 from model.base import BaseVAE
 from model.types_ import *
-# from utils import data_loader
 import pytorch_lightning as pl
-from torchvision import transforms
 import torchvision.utils as vutils
-from torchvision.datasets import CelebA
-from torch.utils.data import DataLoader
 
 
 class VAEXperiment(pl.LightningModule):

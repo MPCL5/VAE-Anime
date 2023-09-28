@@ -15,11 +15,11 @@ VALIDATION_SIZE = 1000
 
 def get_img_transform():
     return T.Compose([
-        T.Resize((IMG_SIZE, IMG_SIZE), antialias=True),
-        T.RandomHorizontalFlip(),
-        T.ToTensor(),
-        T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
+            T.RandomHorizontalFlip(),
+            T.CenterCrop(148),
+            T.Resize((IMG_SIZE, IMG_SIZE)),
+            T.ToTensor(),
+        ])
 
 
 class VAEDataset(LightningDataModule):
@@ -42,7 +42,7 @@ class VAEDataset(LightningDataModule):
         data_path: str,
         train_batch_size: int = 8,
         val_batch_size: int = 8,
-        patch_size: Union[int, Sequence[int]] = (256, 256),
+        patch_size: Union[int, Sequence[int]] = (IMG_SIZE, IMG_SIZE),
         num_workers: int = 0,
         pin_memory: bool = False,
         **kwargs,
@@ -59,8 +59,7 @@ class VAEDataset(LightningDataModule):
     def get_img_transform(self):
         return T.Compose([
             T.RandomHorizontalFlip(),
-            T.CenterCrop(148),
-            T.Resize(self.patch_size, antialias=True),
+            T.Resize(self.patch_size),
             T.ToTensor(),
         ])
 
@@ -106,3 +105,10 @@ class VAEDataset(LightningDataModule):
             shuffle=True,
             pin_memory=self.pin_memory,
         )
+
+
+if __name__ == '__main__':
+    dataset = ImageFolder(
+        root=DATA_DIR, transform=get_img_transform())
+
+    dataset[0]
