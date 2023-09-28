@@ -63,7 +63,7 @@ if __name__ == '__main__':
     #   show_input=True, show_hierarchical=False))
     experiment = VAEXperiment(model, EXP_PARAM)
 
-    data = VAEDataset(**DATA_PARAM, patch_size=(64, 64))
+    data = VAEDataset(**DATA_PARAM)
 
     # data.setup()
 
