@@ -72,14 +72,15 @@ class VAEXperiment(pl.LightningModule):
         )
 
         try:
-            samples = self.model.sample(144,
-                                        self.curr_device,
-                                        labels=test_label).cpu().data
+            if hasattr(self.model, 'sample'):
+                samples = self.model.sample(144,
+                                            self.curr_device,
+                                            labels=test_label).cpu().data
 
-            self.logger.log_image(
-                key="Samples",
-                images=[vutils.make_grid(samples, nrow=12, normalize=True)]
-            )
+                self.logger.log_image(
+                    key="Samples",
+                    images=[vutils.make_grid(samples, nrow=12, normalize=True)]
+                )
 
         except Warning:
             pass
