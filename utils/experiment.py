@@ -65,25 +65,22 @@ class VAEXperiment(pl.LightningModule):
         test_input = test_input.to(self.curr_device)
         test_label = test_label.to(self.curr_device)
 
-#         test_input, test_label = batch
         recons = self.model.generate(test_input, labels=test_label)
-        vutils.save_image(recons.data,
-                          fp=os.path.join(self.logger.save_dir,
-                                          "Reconstructions",
-                                          f"recons_{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                          normalize=True,
-                          nrow=12)
+        self.logger.log_image(
+            key="Reconstructions",
+            images=[vutils.make_grid(recons, nrow=12, normalize=True)],
+        )
 
         try:
             samples = self.model.sample(144,
                                         self.curr_device,
-                                        labels=test_label)
-            vutils.save_image(samples.cpu().data,
-                              os.path.join(self.logger.save_dir,
-                                           "Samples",
-                                           f"{self.logger.name}_Epoch_{self.current_epoch}.png"),
-                              normalize=True,
-                              nrow=12)
+                                        labels=test_label).cpu().data
+
+            self.logger.log_image(
+                key="Samples",
+                images=[vutils.make_grid(samples, nrow=12, normalize=True)]
+            )
+
         except Warning:
             pass
 

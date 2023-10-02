@@ -1,4 +1,7 @@
 .idea/*
 data/images/*
 */__pycache__/*
-/results/*
+/results
+/logs
+!*.md
+

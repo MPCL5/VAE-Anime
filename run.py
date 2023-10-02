@@ -4,8 +4,7 @@ import numpy as np
 from pathlib import Path
 import torch.backends.cudnn as cudnn
 from pytorch_lightning import Trainer
-from pytorch_lightning.loggers import TensorBoardLogger
-# from pytorch_lightning.utilities.seed import seed_everything
+from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from dataset import VAEDataset
 
@@ -15,7 +14,10 @@ from utils.experiment import VAEXperiment
 
 
 LOGING_PARAM = {
-    'save_dir': './results'
+    'log_dir': './logs',
+    'save_dir': './results',
+    'log_model': 'all',
+    'project': 'VAE'
 }
 
 MODEL_PARAM = {
@@ -47,10 +49,13 @@ DATA_PARAM = {
     'fast_dev_run': True,
 }
 
+
 if __name__ == '__main__':
     torch.set_float32_matmul_precision('medium')
-    tb_logger = TensorBoardLogger(save_dir=LOGING_PARAM['save_dir'],
-                                  name=MODEL_PARAM['name'],)
+    # tb_logger = TensorBoardLogger(save_dir=LOGING_PARAM['save_dir'],
+    #                               name=MODEL_PARAM['name'],)
+    wandb_logger = WandbLogger(
+        name=MODEL_PARAM['name'], project=LOGING_PARAM['project'], save_dir=LOGING_PARAM['log_dir'])
 
     # For reproducibility
     # seed_everything(config['exp_params']['manual_seed'], True)
@@ -67,19 +72,21 @@ if __name__ == '__main__':
 
     # data.setup()
 
-    runner = Trainer(logger=tb_logger,
+    runner = Trainer(logger=wandb_logger,
                      callbacks=[
                          LearningRateMonitor(),
                          ModelCheckpoint(save_top_k=2,
                                          dirpath=os.path.join(
-                                             tb_logger.log_dir, "checkpoints"),
+                                             LOGING_PARAM['save_dir'], "checkpoints"),
                                          monitor="val_loss",
                                          save_last=True),
                      ],
                      **TRAINER_PARAM)
 
-    Path(f"{tb_logger.log_dir}/Samples").mkdir(exist_ok=True, parents=True)
-    Path(f"{tb_logger.log_dir}/Reconstructions").mkdir(exist_ok=True, parents=True)
+    Path(
+        f"{LOGING_PARAM['log_dir']}/Samples").mkdir(exist_ok=True, parents=True)
+    Path(
+        f"{LOGING_PARAM['log_dir']}/Reconstructions").mkdir(exist_ok=True, parents=True)
 
     print(f"======= Training {MODEL_PARAM} =======")
     runner.fit(experiment, datamodule=data)
