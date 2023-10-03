@@ -55,7 +55,11 @@ if __name__ == '__main__':
     # tb_logger = TensorBoardLogger(save_dir=LOGING_PARAM['save_dir'],
     #                               name=MODEL_PARAM['name'],)
     wandb_logger = WandbLogger(
-        name=MODEL_PARAM['name'], project=LOGING_PARAM['project'], save_dir=LOGING_PARAM['log_dir'])
+        name=MODEL_PARAM['name'],
+        project=LOGING_PARAM['project'],
+        save_dir=LOGING_PARAM['log_dir'],
+        log_model='all'
+    )
 
     # For reproducibility
     # seed_everything(config['exp_params']['manual_seed'], True)
