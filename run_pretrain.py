@@ -7,9 +7,10 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from dataset import VAEDataset
+from model.stacked_ae import StackedAE
 
-from model.vanilla_vae import VanillaVAE
 from utils.experiment import VAEXperiment
+# from pytorch_model_summary import summary
 
 
 LOGING_PARAM = {
@@ -21,7 +22,7 @@ LOGING_PARAM = {
 }
 
 MODEL_PARAM = {
-    'name': 'Vanilla VAE',
+    'name': 'Stacked AE',
     'in_channels': 3,
     'latent_dim': 128
 }
@@ -32,8 +33,6 @@ EXP_PARAM = {
     'scheduler_gamma': 0.95,
     'kld_weight': 0.00025,
     'manual_seed': 1265,
-    'pretrained_path': './results/checkpoints/last-v1.ckpt',
-    'use_pretrained': True,
 }
 
 TRAINER_PARAM = {
@@ -66,28 +65,14 @@ if __name__ == '__main__':
     # For reproducibility
     # seed_everything(config['exp_params']['manual_seed'], True)
 
-    model = VanillaVAE(
+    model = StackedAE(
         in_channels=MODEL_PARAM['in_channels'],
         latent_dim=MODEL_PARAM['latent_dim']
     )
 
-    if EXP_PARAM['use_pretrained']:
-        loaded = torch.load(EXP_PARAM['pretrained_path'])['state_dict']
-        pretrained_state = model.state_dict()
-
-        for key, value in loaded.items():
-            if ('model.encoder' in key or 'model.decoder' in key) and 'encoder_output' not in key:
-                pretrained_state[key.replace('model.', '')] = value
-
-        model.load_state_dict(pretrained_state)
-
-    # print("ENCODER:\n", summary(model, torch.zeros(1, 3, 64, 64),
-    #   show_input=True, show_hierarchical=False))
     experiment = VAEXperiment(model, EXP_PARAM)
 
     data = VAEDataset(**DATA_PARAM)
-
-    # data.setup()
 
     runner = Trainer(logger=wandb_logger,
                      callbacks=[
