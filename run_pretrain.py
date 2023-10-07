@@ -17,7 +17,8 @@ LOGING_PARAM = {
     'log_dir': './logs',
     'save_dir': './results',
     'log_model': 'all',
-    'project': 'VAE'
+    'project': 'VAE',
+    'offline': True
 }
 
 MODEL_PARAM = {
@@ -58,7 +59,7 @@ if __name__ == '__main__':
         name=MODEL_PARAM['name'],
         project=LOGING_PARAM['project'],
         save_dir=LOGING_PARAM['log_dir'],
-        log_model='all'
+        offline=LOGING_PARAM['offline']
     )
 
     # For reproducibility
@@ -81,7 +82,7 @@ if __name__ == '__main__':
                                              LOGING_PARAM['save_dir'], "checkpoints"),
                                          monitor="val_loss",
                                          save_last=True,
-                                         filename=MODEL_PARAM['name']),
+                                         filename='{epoch}-{step}-' + MODEL_PARAM['name']),
                      ],
                      **TRAINER_PARAM)
 

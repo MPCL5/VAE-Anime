@@ -10,14 +10,14 @@ from dataset import VAEDataset
 
 from model.vanilla_vae import VanillaVAE
 from utils.experiment import VAEXperiment
-# from pytorch_model_summary import summary
 
 
 LOGING_PARAM = {
     'log_dir': './logs',
     'save_dir': './results',
     'log_model': 'all',
-    'project': 'VAE'
+    'project': 'VAE',
+    'offline': True
 }
 
 MODEL_PARAM = {
@@ -32,6 +32,8 @@ EXP_PARAM = {
     'scheduler_gamma': 0.95,
     'kld_weight': 0.00025,
     'manual_seed': 1265,
+    'pretrained_path': './results/checkpoints/last-v1.ckpt',
+    'use_pretrained': True,
 }
 
 TRAINER_PARAM = {
@@ -58,7 +60,7 @@ if __name__ == '__main__':
         name=MODEL_PARAM['name'],
         project=LOGING_PARAM['project'],
         save_dir=LOGING_PARAM['log_dir'],
-        log_model='all'
+        offline=LOGING_PARAM['offline']
     )
 
     # For reproducibility
@@ -68,6 +70,17 @@ if __name__ == '__main__':
         in_channels=MODEL_PARAM['in_channels'],
         latent_dim=MODEL_PARAM['latent_dim']
     )
+
+    if EXP_PARAM['use_pretrained']:
+        loaded = torch.load(EXP_PARAM['pretrained_path'])['state_dict']
+        pretrained_state = model.state_dict()
+
+        for key, value in loaded.items():
+            if ('model.encoder' in key or 'model.decoder' in key) and 'encoder_output' not in key:
+                pretrained_state[key.replace('model.', '')] = value
+
+        model.load_state_dict(pretrained_state)
+
     # print("ENCODER:\n", summary(model, torch.zeros(1, 3, 64, 64),
     #   show_input=True, show_hierarchical=False))
     experiment = VAEXperiment(model, EXP_PARAM)
@@ -84,7 +97,7 @@ if __name__ == '__main__':
                                              LOGING_PARAM['save_dir'], "checkpoints"),
                                          monitor="val_loss",
                                          save_last=True,
-                                         filename=MODEL_PARAM['name']),
+                                         filename='{epoch}-{step}-' + MODEL_PARAM['name']),
                      ],
                      **TRAINER_PARAM)
 
