@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
+from torch.distributions.multivariate_normal import MultivariateNormal
 
 from model.base import BaseVAE
 from .types_ import *
@@ -172,14 +173,19 @@ class VaDE(BaseVAE):
         kld_weight = kwargs['M_N']
         recons_loss = F.mse_loss(recons, input)
 
-        # kld_loss = torch.mean(-0.5 * torch.sum(1 +
-        #                       log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
+        gamma_t = gamma.unsqueeze(1).repeat(1, self.latent_dim, 1)
+        z_mean_t = mu.unsqueeze(2).repeat(1, 1, self.num_centroids)
+        z_log_var_t = log_var.unsqueeze(2).repeat(1, 1, self.num_centroids)
+        u_tensor3 = self.u_p.unsqueeze(0).repeat(input.size(0), 1, 1)
+        lambda_tensor3 = self.lambda_p.unsqueeze(0).repeat(input.size(0), 1, 1)
 
-        kld_loss = torch.sum(0.5*gamma*(self.latent_dim*torch.log(torch.tensor(torch.pi*2))+torch.log(
-            self.lambda_p)+torch.exp(log_var)/self.lambda_p+torch.square(mu-self.u_p)/self.lambda_p), dim=(1, 2))\
-            - 0.5*torch.sum(log_var + 1, dim=-1)\
-            - torch.sum(torch.log(self.theta_p.unsqueeze(0).repeat(input.shape[0], 1)) * gamma, dim=-1)\
+        kld_loss = torch.mean(
+            torch.sum(0.5 * gamma_t * (self.latent_dim * torch.log(torch.tensor([torch.pi * 2], device=next(self.parameters()).device)) + torch.log(lambda_tensor3)
+                                       + torch.exp(z_log_var_t) / lambda_tensor3 + torch.square(z_mean_t - u_tensor3) / lambda_tensor3), dim=(1, 2))
+            - 0.5 * torch.sum(log_var+1, dim=-1)
+            - torch.sum(torch.log(self.theta_p.unsqueeze(0).repeat(input.shape[0], 1)) * gamma, dim=-1)
             + torch.sum(torch.log(gamma)*gamma, dim=-1)
+        )
 
         loss = recons_loss + kld_weight * kld_loss
         return {'loss': loss, 'Reconstruction_Loss': recons_loss.detach(), 'KLD': -kld_loss.detach()}
@@ -196,12 +202,11 @@ class VaDE(BaseVAE):
         """
         z = torch.zeros((num_samples * self.num_centroids, self.latent_dim))
 
-        for i in range(len(self.u_p)):
-            z[i * self.num_centroids: (i+1) * self.num_centroids] = torch.normal(
-                mean=self.u_p[i],
-                std=self.theta_p[i],
-                size=(num_samples, self.latent_dim)
-            )
+        for i in range(self.num_centroids):
+            distro = MultivariateNormal(
+                self.u_p[:, i], torch.diag(self.lambda_p[:, i]))
+            z[i * num_samples: (i+1) *
+              num_samples] = distro.sample(sample_shape=(num_samples,))
 
         z = z.to(current_device)
 
