@@ -79,7 +79,7 @@ class VaDE(BaseVAE):
         Initiate GMM Params
         """
         self.theta_p = nn.Parameter(
-            torch.ones(self.num_centroids, dtype='float32') /
+            torch.ones(self.num_centroids) /
             self.num_centroids
         )
         self.u_p = nn.Parameter(
@@ -91,12 +91,12 @@ class VaDE(BaseVAE):
         )
 
     def __get_gamma(self, z):
-        temp_Z = z.unsqueeze(2).repeat(1, 1, self.n_centroid)
+        temp_Z = z.unsqueeze(2).repeat(1, 1, self.num_centroids)
         temp_u_tensor3 = self.u_p.unsqueeze(0).repeat(temp_Z.size(0), 1, 1)
         temp_lambda_tensor3 = self.lambda_p.unsqueeze(
             0).repeat(temp_Z.size(0), 1, 1)
         temp_theta_tensor3 = self.theta_p.unsqueeze(0).unsqueeze(
-            0) * torch.ones((temp_Z.size(0), temp_Z.size(1), self.n_centroid), device=next(self.parameters()).device)
+            0) * torch.ones((temp_Z.size(0), temp_Z.size(1), self.num_centroids), device=next(self.parameters()).device)
 
         p_c_z = torch.exp(torch.sum((torch.log(temp_theta_tensor3) - 0.5 * torch.log(2 * torch.pi * temp_lambda_tensor3) -
                                      torch.square(temp_Z - temp_u_tensor3) / (2 * temp_lambda_tensor3)), dim=1)) + 1e-10
@@ -175,7 +175,7 @@ class VaDE(BaseVAE):
         # kld_loss = torch.mean(-0.5 * torch.sum(1 +
         #                       log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
 
-        kld_loss = torch.sum(0.5*gamma*(self.latent_dim*torch.log(torch.pi*2)+torch.log(
+        kld_loss = torch.sum(0.5*gamma*(self.latent_dim*torch.log(torch.tensor(torch.pi*2))+torch.log(
             self.lambda_p)+torch.exp(log_var)/self.lambda_p+torch.square(mu-self.u_p)/self.lambda_p), dim=(1, 2))\
             - 0.5*torch.sum(log_var + 1, dim=-1)\
             - torch.sum(torch.log(self.theta_p.unsqueeze(0).repeat(input.shape[0], 1)) * gamma, dim=-1)\
