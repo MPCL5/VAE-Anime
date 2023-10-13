@@ -188,7 +188,14 @@ class VaDE(BaseVAE):
         )
 
         loss = recons_loss + kld_weight * kld_loss
-        return {'loss': loss, 'Reconstruction_Loss': recons_loss.detach(), 'KLD': -kld_loss.detach()}
+        return {
+            'loss': loss,
+            'Reconstruction_Loss': recons_loss.detach(),
+            'KLD': -kld_loss.detach(),
+            'theta_p': self.theta_p.detach(),
+            'u_p': self.u_p.detach(),
+            'lambda_p': self.lambda_p.detach()
+        }
 
     def sample(self,
                num_samples: int,
