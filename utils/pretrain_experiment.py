@@ -1,18 +1,20 @@
+from typing import Any, Dict
 from torch import optim
-from model.base import BaseVAE
-from model.types_ import *
+import torch
+import torch.nn as nn
 import pytorch_lightning as pl
 import torchvision.utils as vutils
 
+from model.types_ import *
+from utils.gmm_experiment import GMMExperiment
 
-class VAEXperiment(pl.LightningModule):
 
+class PreTrainExperiment(pl.LightningModule):
     def __init__(self,
-                 vae_model: BaseVAE,
+                 model: nn.Module,
                  params: dict) -> None:
-        super(VAEXperiment, self).__init__()
-
-        self.model = vae_model
+        super(PreTrainExperiment, self).__init__()
+        self.model = model
         self.params = params
         self.curr_device = None
         self.hold_graph = False
@@ -55,7 +57,28 @@ class VAEXperiment(pl.LightningModule):
                       for key, val in val_loss.items()}, sync_dist=True)
 
     def on_validation_end(self) -> None:
-        self.sample_images()
+        self.sample_images() 
+
+    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        self.model.eval()
+
+        gmm_experiment = GMMExperiment(
+            num_centorids=self.model.num_centroids,
+            model=self.model,
+            data_loader=self.trainer.datamodule.train_dataloader(),
+            device=self.curr_device
+        )
+
+        params = gmm_experiment.fit()
+
+        checkpoint['u_p'] = torch.tensor(params[1], dtype=torch.float32)
+        checkpoint['lambda_p'] = torch.tensor(params[2], dtype=torch.float32)
+        
+        self.model.train()
+        
+    def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        self.model.u_p = checkpoint['u_p']
+        self.model.lambda_p = checkpoint['u_p']
 
     def sample_images(self):
         # Get sample reconstruction image

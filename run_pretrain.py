@@ -1,15 +1,13 @@
 import os
 import torch
-import numpy as np
 from pathlib import Path
-import torch.backends.cudnn as cudnn
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from dataset import VAEDataset
 from model.stacked_ae import StackedAE
 
-from utils.experiment import VAEXperiment
+from utils.pretrain_experiment import PreTrainExperiment
 # from pytorch_model_summary import summary
 
 
@@ -24,7 +22,8 @@ LOGING_PARAM = {
 MODEL_PARAM = {
     'name': 'Stacked AE',
     'in_channels': 3,
-    'latent_dim': 128
+    'latent_dim': 64,
+    'cluster_count': 10
 }
 
 EXP_PARAM = {
@@ -37,7 +36,7 @@ EXP_PARAM = {
 
 TRAINER_PARAM = {
     'accelerator': 'gpu',
-    'max_epochs': 100,
+    'max_epochs': 4,
 }
 
 DATA_PARAM = {
@@ -67,10 +66,11 @@ if __name__ == '__main__':
 
     model = StackedAE(
         in_channels=MODEL_PARAM['in_channels'],
-        latent_dim=MODEL_PARAM['latent_dim']
+        latent_dim=MODEL_PARAM['latent_dim'],
+        cluster_count=MODEL_PARAM['cluster_count']
     )
 
-    experiment = VAEXperiment(model, EXP_PARAM)
+    experiment = PreTrainExperiment(model, EXP_PARAM)
 
     data = VAEDataset(**DATA_PARAM)
 

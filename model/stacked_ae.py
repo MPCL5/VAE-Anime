@@ -9,10 +9,12 @@ class StackedAE(nn.Module):
     def __init__(self,
                  in_channels: int,
                  latent_dim: int,
+                 cluster_count: int,
                  hidden_dims: List = None,) -> None:
         super(StackedAE, self).__init__()
 
         self.latent_dim = latent_dim
+        self.num_centroids = cluster_count
 
         modules = []
         if hidden_dims is None:
@@ -25,7 +27,7 @@ class StackedAE(nn.Module):
                     nn.Conv2d(in_channels, out_channels=h_dim,
                               kernel_size=3, stride=2, padding=1),
                     nn.BatchNorm2d(h_dim),
-                    nn.LeakyReLU())
+                    nn.GELU())
             )
             in_channels = h_dim
 
@@ -49,7 +51,7 @@ class StackedAE(nn.Module):
                                        padding=1,
                                        output_padding=1),
                     nn.BatchNorm2d(hidden_dims[i + 1]),
-                    nn.LeakyReLU())
+                    nn.GELU())
             )
 
         self.decoder = nn.Sequential(*modules)
@@ -62,7 +64,7 @@ class StackedAE(nn.Module):
                                padding=1,
                                output_padding=1),
             nn.BatchNorm2d(hidden_dims[-1]),
-            nn.LeakyReLU(),
+            nn.GELU(),
             nn.Conv2d(hidden_dims[-1], out_channels=3,
                       kernel_size=3, padding=1),
             nn.Tanh())
